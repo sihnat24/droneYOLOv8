@@ -1,6 +1,8 @@
 from ultralytics import YOLO
+from datetime import datetime
 import os
 
+_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"  
 def train(data_yaml, subset=False):
@@ -10,13 +12,13 @@ def train(data_yaml, subset=False):
     model.train(
         data = data_yaml,
         epochs=10,
-        imgsz=640, #higher improves obj detecetion but multiplies mem and compute
-        batch=16, #images per grad update
+        imgsz=1280, #higher improves obj detecetion but multiplies mem and compute
+        batch=8, #images per grad update (reduced from 16 for imgsz=1280)
         device='mps',
         workers=4, #CPU threads for loading images in parallel.
         project='runs/train',
-        name='visdrone-nano-subset',
-        exist_ok=True,
+        name=f'visdrone-nano-{_ts}',
+        exist_ok=False,
         fraction=0.1 if subset else 1.0,  #fraction of dataset 
         max_det=300, # cap detections per image
         conf=0.001, # filter garbage candidates before NMS

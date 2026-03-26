@@ -79,7 +79,7 @@ Note: imgsz=1280 will run slower — this is acceptable,
 the epoch count is what matters for fair comparison, not wall clock time.
 
 ## stopping condition
-Stop after 25 experiments or when score exceeds 0.20, whichever comes first.
+Stop after 5 experiments or when score exceeds 0.20, whichever comes first.
 Report a summary of what worked and what didn't.
 
 ## simplicity rule

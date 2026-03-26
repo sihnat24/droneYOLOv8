@@ -18,6 +18,7 @@ def train(data_yaml, subset=False):
         fraction=0.1 if subset else 1.0,  #fraction of dataset 
         max_det=300, # cap detections per image
         conf=0.001, # filter garbage candidates before NMS
+        flipud=0.5, # aerial has no canonical up/down orientation
     )
 
 if __name__ == "__main__":

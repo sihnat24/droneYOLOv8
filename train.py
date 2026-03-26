@@ -16,6 +16,8 @@ def train(data_yaml, subset=False):
         name='visdrone-nano-subset',
         exist_ok=True,
         fraction=0.1 if subset else 1.0,  #fraction of dataset 
+        max_det=300, # cap detections per image
+        conf=0.001, # filter garbage candidates before NMS
     )
 
 if __name__ == "__main__":

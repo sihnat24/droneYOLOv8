@@ -12,17 +12,17 @@ def train(data_yaml, subset=False):
     model.train(
         data = data_yaml,
         epochs=10,
-        imgsz=1280, #higher improves obj detecetion but multiplies mem and compute
-        batch=8, #images per grad update (reduced from 16 for imgsz=1280)
+        imgsz=640,
+        batch=16,
         device='mps',
         workers=4, #CPU threads for loading images in parallel.
-        project='runs/train',
+        project=os.path.abspath('runs/train'),
         name=f'visdrone-nano-{_ts}',
         exist_ok=False,
-        fraction=0.1 if subset else 1.0,  #fraction of dataset 
+        fraction=0.1 if subset else 1.0,  #fraction of dataset
         max_det=300, # cap detections per image
         conf=0.001, # filter garbage candidates before NMS
-        flipud=0.5, # aerial has no canonical up/down orientation
+        close_mosaic=0, # keep mosaic active all 10 epochs (default=10 disables it immediately)
     )
 
 if __name__ == "__main__":

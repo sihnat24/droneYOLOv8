@@ -1,6 +1,8 @@
 from ultralytics import YOLO
+import os
 
 
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"  
 def train(data_yaml, subset=False):
 
     model = YOLO("yolov8n.pt") #n for nano-fast iteration

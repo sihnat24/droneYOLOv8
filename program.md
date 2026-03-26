@@ -80,8 +80,14 @@ the epoch count is what matters for fair comparison, not wall clock time.
 
 ## stopping condition
 Stop after 25 experiments or when score exceeds 0.20, whichever comes first.
+Report a summary of what worked and what didn't.
 
 ## simplicity rule
 All else being equal, simpler is better. A 0.001 gain that adds 
 significant complexity should be reverted.
+
+
+## crashes 
+ MPS tensor shape mismatches can occur with aggressive augmentation. if a run crashes with a tensor error, try the same change with a 
+  smaller augmentation value first (e.g. flipud=0.3 before flipud=0.5)
 

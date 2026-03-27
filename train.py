@@ -23,6 +23,7 @@ def train(data_yaml, subset=False):
         max_det=300, # cap detections per image
         conf=0.001, # filter garbage candidates before NMS
         close_mosaic=0, # keep mosaic active all 10 epochs (default=10 disables it immediately)
+        lr0=0.02, # raise initial LR (default=0.01) for more aggressive learning in short budget
         lrf=0.1, # final LR = lr0*lrf; default 0.01 drops too fast for 10 epochs
     )
 

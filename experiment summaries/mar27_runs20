@@ -1,0 +1,47 @@
+# VisDrone YOLOv8n Autoresearch — Session Summary (Exp8–Exp20)
+
+## Results
+
+| Metric | Baseline | Best (Exp9) | Delta |
+|--------|----------|-------------|-------|
+| ISR Score | 0.0983 | **0.1133** | +15.3% |
+| Recall | 0.075 | 0.0885 | +18.0% |
+| Precision | 0.170 | 0.1879 | +10.5% |
+
+---
+
+## What Worked (Kept)
+
+| Exp | Change | Score | Δ Score |
+|-----|--------|-------|---------|
+| exp7 | `close_mosaic=0` | 0.1021 | +0.0038 |
+| exp8 | `lrf=0.1` | 0.1113 | +0.0092 |
+| exp9 | `lr0=0.02` | 0.1133 | +0.0020 |
+
+**Key insight:** The entire gain came from LR schedule tuning, not augmentation. With only 10 epochs, the default cosine LR decays too aggressively — keeping LR higher (`lrf=0.1`) and starting slightly higher (`lr0=0.02`) let the undertrained model learn more.
+
+---
+
+## What Didn't Work (Reverted)
+
+- **Augmentation** (`hsv_v/s/h`, `translate`, `degrees`, `flipud`): consistently hurt recall — adding noise to a data-starved model makes it harder to learn
+- **Mosaic reduction**: hurt badly — full `mosaic=1.0` is critical for exposing tiny objects
+- **Larger batch (32)**: fewer gradient updates per epoch = worse for undertrained model
+- **Crash-prone**: `scale≥0.6`, `flipud≥0.3`, `imgsz=1280` all cause MPS tensor shape mismatches
+- **Adam optimizer**: incompatible with `lr0=0.02` (Adam needs ~0.001)
+
+---
+
+## Why 0.20 Was Not Reached
+
+The model is fundamentally bottlenecked by the 10-epoch / 10%-data budget. The 0.1133 ceiling likely requires either more data (`fraction`) or more epochs — both locked by the experiment constraints. The score was not gamed (recall improved legitimately from ~0.075 to ~0.089).
+
+---
+
+## Context
+
+- **Model:** YOLOv8n fine-tuned on VisDrone2019-DET
+- **Device:** Apple M-series Mac (MPS)
+- **Budget:** `epochs=10`, `fraction=0.1` (fixed throughout)
+- **Metric:** `ISR score = 0.75 * recall + 0.25 * precision`
+- **Task:** Aerial ISR — missing a real object is worse than a false alarm

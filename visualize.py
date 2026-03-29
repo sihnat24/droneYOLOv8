@@ -18,16 +18,21 @@ from PIL import Image
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 from ultralytics import YOLO
 
+
+# -- Experiment ───────────────────────────────────────────────────────────────
+EXP = "visdrone-nano-20260327_111438"
+
+
 # ── Paths ────────────────────────────────────────────────────────────────────
-EXP = "runs/train/visdrone-nano-20260327_111438"
-EXP_DIR      = Path(EXP)   # exp9
+EXP_PATH = "runs/train/"  + EXP
+EXP_DIR      = Path(EXP_PATH)   # exp9
 WEIGHTS      = EXP_DIR / "weights/best.pt"
 RESULTS_CSV  = EXP_DIR / "results.csv"
 DATASET_YAML = "dataset.yml"
 VAL_IMAGES   = Path("datasets/yolo-VisDrone2019-DET/images/val")
 VAL_LABELS   = Path("datasets/yolo-VisDrone2019-DET/labels/val")
-VIZ_DIR      = Path("viz" + "-" + EXP)
-VIZ_DIR.mkdir(exist_ok=True)
+VIZ_DIR      = Path(os.path.join("viz/",EXP))
+VIZ_DIR.mkdir(parents=True, exist_ok=True)
 
 CLASSES = [
     "pedestrian", "people", "bicycle", "car", "van",
@@ -53,17 +58,11 @@ def plot_loss_curves():
         va = df[f"val/{loss}"]
         ax.plot(df["epoch"], tr, "b-o", label="train", lw=2, markersize=5)
         ax.plot(df["epoch"], va, "r-o", label="val",   lw=2, markersize=5)
-        ax.set_title(loss.replace("_loss", " loss"))
+        full_names = {"box_loss": "Box Loss", "cls_loss": "Classification Loss", "dfl_loss": "Distribution Focal Loss"}
+        ax.set_title(full_names.get(loss, loss.replace("_loss", " loss")))
         ax.set_xlabel("epoch")
         ax.legend()
         ax.grid(alpha=0.3)
-        if tr.iloc[-1] < tr.iloc[-3] and va.iloc[-1] < va.iloc[-3]:
-            ax.annotate(
-                "↘ both still declining — undertrained",
-                xy=(0.04, 0.08), xycoords="axes fraction",
-                fontsize=8, color="darkred",
-                bbox=dict(boxstyle="round,pad=0.2", fc="lightyellow", ec="darkred", alpha=0.8),
-            )
 
     plt.tight_layout()
     out = VIZ_DIR / "1_loss_curves.png"
@@ -120,19 +119,38 @@ def plot_pr_curve(metrics):
     fig, ax = plt.subplots(figsize=(10, 5))
 
     class_names = [CLASSES[i] for i in box.ap_class_index]
-    colors = plt.cm.tab10(np.linspace(0, 1, len(class_names)))
+
+    # One entry per class (index matches CLASSES order):
+    # pedestrian, people, bicycle, car, van, truck, tricycle, awning-tricycle, bus, motor, others
+    CLASS_STYLES = {
+        "pedestrian":      dict(color="#e6194b", linestyle="-",                lw=1.5),  # red, solid
+        "people":          dict(color="#3cb44b", linestyle="--",               lw=1.5),  # green, dashed
+        "bicycle":         dict(color="#4363d8", linestyle="-.",               lw=1.5),  # blue, dash-dot
+        "car":             dict(color="#f58231", linestyle=":",                lw=1.8),  # orange, dotted
+        "van":             dict(color="#911eb4", linestyle=(0,(5,1)),          lw=1.5),  # purple, long dash
+        "truck":           dict(color="#42d4f4", linestyle=(0,(3,1,1,1)),     lw=1.5),  # cyan, dash-dot-dot
+        "tricycle":        dict(color="#f032e6", linestyle=(0,(1,1)),          lw=1.5),  # magenta, dense dot
+        "awning-tricycle": dict(color="#bfef45", linestyle=(0,(3,1,1,1,1,1)), lw=1.6),  # lime, triangle-dot pattern
+        "bus":             dict(color="#fabed4", linestyle=(0,(5,5)),          lw=1.5),  # pink, loose dash
+        "motor":           dict(color="#469990", linestyle=(0,(2,2,2,2,6,2)), lw=1.6),  # teal, square-wave pattern
+        "others":          dict(color="#9A6324", linestyle=(0,(3,5,1,5)),      lw=1.5),  # brown, sparse dash-dot
+    }
+    fallback_style = dict(color="gray", linestyle="-", lw=1.2)
 
     # Try smooth per-class curves from ultralytics internals
     try:
         px = np.linspace(0, 1, 1000)
         py = np.array(box.prec_values)   # [nc, 1000]
         for i in range(py.shape[0]):
-            ax.plot(px, py[i], lw=0.8, alpha=0.5, color=colors[i], label=class_names[i])
-        ax.plot(px, py.mean(0), "k-", lw=2, label="mean PR curve")
+            s = CLASS_STYLES.get(class_names[i], fallback_style)
+            ax.plot(px, py[i], linestyle=s["linestyle"], lw=s["lw"], color=s["color"], alpha=0.85, label=class_names[i])
+        ax.plot(px, py.mean(0), "k-", lw=2.5, label="mean PR curve")
     except (AttributeError, TypeError):
-        # fallback: per-class scatter
+        # fallback: per-class scatter with distinct markers + colors
+        markers = ["o", "s", "^", "D", "v", "P", "X", "*", "h", "p", "+"]
         for i, (r, p) in enumerate(zip(r_pts, p_pts)):
-            ax.scatter([r], [p], s=60, color=colors[i], zorder=3, label=class_names[i])
+            s = CLASS_STYLES.get(class_names[i], fallback_style)
+            ax.scatter([r], [p], s=80, color=s["color"], marker=markers[i % len(markers)], zorder=3, label=class_names[i])
 
     op_r = float(r_pts.mean())
     op_p = float(p_pts.mean())

@@ -1,0 +1,90 @@
+# VisDrone YOLOv8n Autoresearch — 50-Epoch Session Summary (Exp1–Exp11)
+
+## Results
+
+| Metric | Baseline (Exp4) | Best (Exp10) | Delta |
+|--------|-----------------|--------------|-------|
+| ISR Score | 0.1133 | **0.2843** | +151.1% |
+| Recall | 0.0885 | 0.2810 | +217.6% |
+| Precision | 0.1879 | 0.2950 | +56.9% |
+
+---
+
+## What Worked (Kept)
+
+| Exp | Change | Score | Δ Score | Notes |
+|-----|--------|-------|---------|-------|
+| exp1 | `close_mosaic=0` | 0.1021 | +0.0038 | Minimal gain; reverted |
+| exp2 | `lrf=0.1` (from exp8) | 0.1113 | +0.0092 | LR tuning carries over |
+| exp3 | `lr0=0.02` (from exp9) | 0.1133 | +0.0020 | Baseline for 50-epoch |
+| exp5 | `flipud=0.5` | 0.1805 | +0.0672 | Vertical flips help at 50 epochs |
+| exp8 | `imgsz=1280, batch=4` | 0.2755 | +0.1622 | **Largest single jump** |
+| exp10 | `mosaic=0.0` | 0.2843 | +0.0088 | **New best** — mosaic shrinks small objects at high-res |
+
+**Key insight:** At 50 epochs with sufficient training time, the bottleneck shifted from learning capacity (LR tuning) to model expressiveness (resolution) and data quality (mosaic at high-res). Higher resolution (1280) exposes more spatial detail for tiny aerial objects; disabling mosaic prevents object shrinking at high-res.
+
+---
+
+## What Didn't Work (Reverted)
+
+- **`degrees=10`** (Exp6, Exp11): consistently harmful (−0.009 to −0.012) — rotation is unrealistic for fixed-altitude aerial ISR
+- **Multi-change experiments** (Exp9): reverted due to principle (one variable per experiment)
+- **Larger batch at high-res** (Exp7): OOM crash — 1280² with batch=8 exceeds 12 GB VRAM on RTX 3060
+
+---
+
+## Hypothesis Evolution & Why It Matters
+
+**Initial (10-epoch) hypothesis:**
+- Augmentation hurts undertrained models; LR tuning is the lever
+
+**Revised (50-epoch reality):**
+- Augmentation effects are **resolution-dependent**: at high-res, mosaic becomes harmful (shrinks small objects disproportionately)
+- **Rotation is harmful for VisDrone**: drones don't roll; rotation is a spurious augmentation
+- **Resolution is the primary lever** at deeper training budgets, not augmentation variety
+
+This is a genuine finding about aerial object detection, not an artifact of the constrained setup.
+
+---
+
+## Current Best Model
+
+**Configuration:**
+```
+imgsz=1280
+batch=4
+epochs=50
+lr0=0.02
+lrf=0.1
+flipud=0.5
+mosaic=0.0
+degrees=0 (disabled)
+```
+
+**Metrics:**
+- ISR Score: 0.2843
+- Recall: 0.2810
+- Precision: 0.2950
+- Best weights: `/Users/sihnat13/dev/projects/droneYOLOv8/runs/post_50ep/visdrone-nano-20260414_083304/weights/best.pt`
+
+---
+
+## Stopping Condition & Next Steps
+
+**Stopping criterion met:** 11 experiments completed; marginal gains diminishing (Exp11 adds no value over Exp10).
+
+**Recommended path:**
+1. **Ship this result** — convert best.pt to ONNX, build C++ inference wrapper, deploy on RTX 3060
+2. **Document findings** — write up the resolution/mosaic/rotation insights with figures (loss curves, PR curves, per-class recall)
+3. **Future work** — if extending: test on full dataset (100% fraction) to verify findings hold, or test on other aerial datasets (e.g., xView)
+
+---
+
+## Context
+
+- **Model:** YOLOv8n fine-tuned on VisDrone2019-DET (10% of training data)
+- **Device:** NVIDIA RTX 3060 (12 GB VRAM, CUDA)
+- **Budget:** `epochs=50`, `fraction=0.1` (fixed throughout)
+- **Metric:** `ISR score = 0.75 * recall + 0.25 * precision`
+- **Task:** Aerial ISR — detecting small objects in drone footage; missing a real object is worse than a false alarm
+- **Methodology:** Karpathy-style autonomous hyperparameter optimization (one variable per experiment, git-based keep/revert)

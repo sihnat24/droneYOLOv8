@@ -1,4 +1,0 @@
-https://github.com/miolini/autoresearch-macos 
-
-
-apply the autonomous training loop to try and improve the model

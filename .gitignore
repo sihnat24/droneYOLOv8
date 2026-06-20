@@ -5,3 +5,6 @@ run.log
 results.tsv
 __pycache__/
 venv/
+.gitignore
+viz/
+.DS_Store
